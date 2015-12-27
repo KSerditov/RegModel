@@ -1,0 +1,81 @@
+---
+title: "Regression Models Course Project"
+author: "Konstantin Serditov"
+date: "12/26/2015"
+output: pdf_document
+geometry: margin=0.75in
+---
+
+# Executive summary
+
+This report is devoted to exploring the relationship between set of variables and miles per gallon (MPG) in mtcars dataset. We try to answer two main questions: “Is an automatic or manual transmission better for MPG” and "Quantify the MPG difference between automatic and manual transmissions".
+
+Regression analysis shows that MPG change with respect to transmission type can be estimated between -0.7 to 4.9 (95% confidence interval) and its influence on MPG is by far smaller than influence of other variables. So it is not possible to make useful answer on the question using the dataset.
+
+However, useful linear regression model based on 'hp', 'wt' and 'am' was build and it fits data points with R-squared value 0.8399 and p-value 2.908e-11.
+
+# Mtcars data exploration
+Using following commands (output is supressed due to verbosity):
+```{r}
+data(mtcars)
+```
+```{r, eval=FALSE}
+?mtcars
+str(mtcars)
+summary(mtcars)
+head(mtcars)
+```
+Note that cyl, vs, am, gear, carb are factor variables by nature:
+
+Is there difference in MPG values and Transmission types? See box plot on Figure 1:
+```{r, eval=FALSE}
+boxplot(mtcars$mpg ~ as.factor(mtcars$am))
+```
+Looks like there is some but we have to look on the whole picture. Please see Figure 2 in the appendix which shows correlation matrix for all presented variables:
+```{r, eval=FALSE}
+corrplot(cor(mtcars), type="lower", method = "number", 
+         title="Figure 2: Correlation matrix for mtcars")
+```
+There is also strong correlation with other variables, namely, cyl, disp, hp, drat, wt, vs, am.
+
+# Regression analysis
+Using Figure 2 exclude gear and qsec from further review. Also, note perfect correlation between cyl and disp and exclude cyl as well.
+Start with the following model:
+```{r}
+summary(lm(mpg ~ disp + hp + drat + wt + vs + am + carb, data = mtcars))$coeff
+```
+Eliminate not significant variable using highest p-value (>0.05). On this step it is 'disp'. Repeat the process several times (not shown here due to page limit).
+After this process, best model which includes 'am' looks like this:
+```{r}
+fit <- lm(mpg ~ hp + wt + as.factor(am), data = mtcars)
+summary(fit)
+```
+Model summary shows slope 2.08 for transmission type coefficient. However, 95% confidence interval for it is
+```{r}
+confint(fit, 'as.factor(am)1', level=0.95)
+```
+So MPG change with respect to transmission type is estimated between -0.7 to 4.9.
+P-value for 'am' variable is too high and this means that contribution of hp and wt is much more significant than influence of transmission type on MPG.
+
+Diagnostic plots are presented on Figure 3. There is no obvious pattern on Residuals vs Fitted and Scale-Location plots. Points on Q-Q plot mostly lays on line, however two outliers exists as well as on Cook's distance plot, so we may want to investigate and exclude them. 
+
+# Appendix: supporting figures
+```{r, echo=FALSE}
+mtcars2 <- mtcars
+mtcars2$am <- factor(mtcars$am, labels=c('Automatic','Manual'))
+boxplot(mpg ~ am, data = mtcars2, main = "Figure 1: Box plot MPG vs Transmission type", xlab = "Transmission type", ylab = "Miles per gallon")
+```
+
+```{r, echo=FALSE}
+library(corrplot)
+cex.before <- par("cex")
+par(cex = 0.7)
+corrplot(cor(mtcars), type="lower", method = "number", title="Figure 2: Correlation matrix for mtcars", tl.cex = 1/par("cex"), cl.cex = 1/par("cex"), mar=c(0,0,2,0))
+par(cex = cex.before)
+```
+
+```{r, echo=FALSE}
+par(mfrow = c(2, 2), mar=c(3,3,2,1), oma=c(0,0,4,0))
+plot(fit)
+title("Figure 3. Model diagnostics", outer=TRUE)
+```
